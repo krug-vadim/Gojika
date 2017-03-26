@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"io"
 
-	// "golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/clearsign"
 
 	"github.com/miekg/mmark"
@@ -55,6 +56,19 @@ func main() {
 		return;
 	}
 
+	keyFile, err := os.Open("pub.key")
+	if err != nil {
+		fmt.Println("[e] PubKey Error:", err);
+		return;
+	}
+
+	keyRing, err := openpgp.ReadArmoredKeyRing(keyFile)
+	// armoredKey, err := ioutil.ReadFile("pub.key")
+	if err != nil {
+		fmt.Println("[e] PubKey Error:", err);
+		return;
+	}
+
 	fmt.Fprintf(os.Stderr, "From: %v\n", env.GetHeader("From"));
 
 	for i := range env.Attachments {
@@ -71,15 +85,20 @@ func main() {
 		return
 	}
 
+	signer, err := openpgp.CheckDetachedSignature(keyRing, bytes.NewReader(blk.Bytes), blk.ArmoredSignature.Body)
+	if err != nil {
+		fmt.Println("[e] Signer:", err);
+		return;
+	}
+
+	fmt.Println("Signer: ", signer);
+
 	html, err := Render(string(blk.Plaintext));
 	if err != nil {
 		fmt.Println("[e] ", err);
 		return;
 	}
 	fmt.Println("md:\n" + html);
-
-	//signer, err = openpgp.CheckArmoredDetachedSignature(keyring, bytes.NewReader(file.content), bytes.NewReader(file.signature))
-
 
 	//fmt.Println(entity)
 }
