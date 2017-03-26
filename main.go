@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"io"
 
 	// "golang.org/x/crypto/openpgp"
-	//"golang.org/x/crypto/openpgp/clearsign"
+	"golang.org/x/crypto/openpgp/clearsign"
 
 	"github.com/miekg/mmark"
 	"github.com/jhillyerd/enmime"
@@ -50,16 +51,35 @@ func Render(md string) (html string, err error) {
 func main() {
 	env, err := enmime.ReadEnvelope(os.Stdin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error!\n");
+		fmt.Println("[e] ", err);
 		return;
 	}
-	fmt.Fprintf(os.Stderr, "From: %v\n", env.GetHeader("From"));
-	fmt.Fprintf(os.Stderr, "<<<-%v-->\n", env.Text);
 
-	html, err := Render(env.Text);
+	fmt.Fprintf(os.Stderr, "From: %v\n", env.GetHeader("From"));
+
+	for i := range env.Attachments {
+		fmt.Println(env.Attachments[i].FileName, env.Attachments[i].ContentType);
+
+		f, _ := os.Create(env.Attachments[i].FileName)
+		defer f.Close()
+		io.Copy(f, env.Attachments[i]);
+	}
+
+	blk, _ := clearsign.Decode([]byte(env.Text));
+	if blk == nil {
+		fmt.Println("[e] No clearsign message!")
+		return
+	}
+
+	html, err := Render(string(blk.Plaintext));
 	if err != nil {
-		fmt.Println("[e] %v", err)
+		fmt.Println("[e] ", err);
 		return;
 	}
 	fmt.Println("md:\n" + html);
+
+	//signer, err = openpgp.CheckArmoredDetachedSignature(keyring, bytes.NewReader(file.content), bytes.NewReader(file.signature))
+
+
+	//fmt.Println(entity)
 }
