@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"io"
+	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
 
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/clearsign"
@@ -49,12 +52,39 @@ func Render(md string) (html string, err error) {
 	return string(output), nil
 }
 
+type T struct {
+        A string
+        B struct {
+                RenamedC int   `yaml:"c"`
+                D        []int `yaml:",flow"`
+
+       }
+   }
+
+func ReadConfig(FileName string) {
+	data, err := ioutil.ReadFile(FileName)
+	if err != nil {
+		fmt.Println("[e] Error open config file:", err)
+		return
+	}
+
+	t := T{}
+
+	err = yaml.Unmarshal(data, &t)
+	if err != nil {
+		fmt.Println("error: ", err)
+	}
+	fmt.Printf("--- t:\n%v\n\n", t)
+}
+
 func main() {
 	env, err := enmime.ReadEnvelope(os.Stdin)
 	if err != nil {
 		fmt.Println("[e] ", err);
 		return;
 	}
+
+	ReadConfig("config.yml")
 
 	keyFile, err := os.Open("pub.key")
 	if err != nil {
