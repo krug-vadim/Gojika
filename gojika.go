@@ -6,6 +6,8 @@ import (
 	"os"
 	"io"
 	"io/ioutil"
+	// "time"
+	"html/template"
 
 	"gopkg.in/yaml.v2"
 
@@ -15,6 +17,14 @@ import (
 	"github.com/miekg/mmark"
 	"github.com/jhillyerd/enmime"
 )
+
+type PageData struct {
+	Author  string
+	Title   string
+	Date    string
+	Content template.HTML
+}
+
 
 // Render a Markdown fragment into a html fragment
 func Render(md string) (html string, err error) {
@@ -74,7 +84,7 @@ func ReadConfig(FileName string) {
 	if err != nil {
 		fmt.Println("error: ", err)
 	}
-	fmt.Printf("--- t:\n%v\n\n", t)
+	fmt.Fprintf(os.Stderr,"--- t:\n%v\n\n", t)
 }
 
 func main() {
@@ -121,14 +131,30 @@ func main() {
 		return;
 	}
 
-	fmt.Println("Signer: ", signer);
+	fmt.Fprintf(os.Stderr,"Signer: ", signer);
 
 	html, err := Render(string(blk.Plaintext));
 	if err != nil {
 		fmt.Println("[e] ", err);
 		return;
 	}
-	fmt.Println("md:\n" + html);
 
-	//fmt.Println(entity)
+	page_template, err := template.ParseFiles("templates/page.html")
+	if err != nil {
+		fmt.Println("[e] ", err);
+		return
+	}
+
+	page_data := PageData{
+		Author: env.GetHeader("From"),
+		Title: env.GetHeader("Subject"),
+		Date: env.GetHeader("Date"),
+		Content: template.HTML(html)}
+	// data["author"] = signer.Identities[0]
+
+	err = page_template.Execute(os.Stdout, page_data)
+	if err != nil {
+		fmt.Println("[e] ", err);
+		return
+	}
 }
